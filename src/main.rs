@@ -1,5 +1,5 @@
 use color_eyre::eyre::{Ok, Result};
-use ratatui::{DefaultTerminal, Frame, crossterm::event::{self, Event}, layout::{Constraint, Layout}, style::{Color, Stylize}, widgets::{Block, BorderType, Paragraph, Widget}};
+use ratatui::{DefaultTerminal, Frame, crossterm::event::{self, Event}, layout::{Constraint, Layout}, style::{Color, Stylize}, widgets::{Block, BorderType, List, ListItem, Paragraph, Widget}};
 
 #[derive(Debug, Default)]
 struct AppState {
@@ -15,6 +15,20 @@ struct TodoItem {
 
 fn main() -> Result<()> {
     let mut state = AppState::default();
+
+    state.items.push(TodoItem { 
+        is_done: false, 
+        description: String::from("Finish application"),
+    });
+    state.items.push(TodoItem { 
+        is_done: false, 
+        description: String::from("Finish application"),
+    });
+    state.items.push(TodoItem { 
+        is_done: false, 
+        description: String::from("Finish application"),
+    });
+
     color_eyre::install()?;
 
     let terminal = ratatui::init();
@@ -45,11 +59,25 @@ fn run(mut terminal: DefaultTerminal, app_state:&mut AppState) -> Result<()> {
 }
 
 fn render(frame: &mut Frame, app_state:&AppState) {
-    let [border_area] = Layout::vertical([Constraint::Fill((1))])
+    let [border_area] = Layout::vertical([Constraint::Fill(1)])
         .margin(1)
         .areas(frame.area());
+  
+    let [inner_area] = Layout::vertical([Constraint::Fill(1)])
+        .margin(1)
+        .areas(border_area);
 
-    Block::bordered().border_type(BorderType::Rounded).fg(Color::Yellow).render(border_area, frame.buffer_mut());
+    Block::bordered()
+        .border_type(BorderType::Rounded)
+        .fg(Color::Yellow)
+        .render(border_area, frame.buffer_mut());
 
-    Paragraph::new("Hello from application").render(frame.area(), frame.buffer_mut());
+    List::new(app_state
+        .items
+        .iter()
+        .map(|x| ListItem::from(x.description.clone()))
+    )
+    .render(inner_area, frame.buffer_mut());
+
+    // Paragraph::new("Hello from application").render(frame.area(), frame.buffer_mut());
 }
