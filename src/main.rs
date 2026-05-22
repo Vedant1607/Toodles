@@ -1,5 +1,5 @@
 use color_eyre::eyre::{Ok, Result};
-use ratatui::{DefaultTerminal, Frame, crossterm::event::{self, Event}, widgets::{Paragraph, Widget}};
+use ratatui::{DefaultTerminal, Frame, crossterm::event::{self, Event}, layout::{Constraint, Layout}, style::{Color, Stylize}, widgets::{Block, BorderType, Paragraph, Widget}};
 
 #[derive(Debug, Default)]
 struct AppState {
@@ -45,5 +45,11 @@ fn run(mut terminal: DefaultTerminal, app_state:&mut AppState) -> Result<()> {
 }
 
 fn render(frame: &mut Frame, app_state:&AppState) {
+    let [border_area] = Layout::vertical([Constraint::Fill((1))])
+        .margin(1)
+        .areas(frame.area());
+
+    Block::bordered().border_type(BorderType::Rounded).fg(Color::Yellow).render(border_area, frame.buffer_mut());
+
     Paragraph::new("Hello from application").render(frame.area(), frame.buffer_mut());
 }
