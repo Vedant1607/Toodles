@@ -1,23 +1,35 @@
 use color_eyre::eyre::{Ok, Result};
 use ratatui::{DefaultTerminal, Frame, crossterm::event::{self, Event}, widgets::{Paragraph, Widget}};
 
+#[derive(Debug, Default)]
+struct AppState {
+    items: Vec<TodoItem>,
+
+}
+
+#[derive(Debug, Default)]
+struct TodoItem {
+    is_done:bool,
+    description: String,
+}
+
 fn main() -> Result<()> {
-    println!("Hello, world!");
+    let mut state = AppState::default();
     color_eyre::install()?;
 
     let terminal = ratatui::init();
 
-    let result = run(terminal);
+    let result = run(terminal, &mut state);
 
     ratatui::restore();
     result
 }
 
 
-fn run(mut terminal: DefaultTerminal) -> Result<()> {
+fn run(mut terminal: DefaultTerminal, app_state:&mut AppState) -> Result<()> {
     loop {
         // Rendering
-        terminal.draw(render)?;
+        terminal.draw(|f| render(f, app_state))?;
 
         // Input Handling
         if let Event::Key(key) = event::read()? {
@@ -32,6 +44,6 @@ fn run(mut terminal: DefaultTerminal) -> Result<()> {
     Ok(())
 }
 
-fn render(frame: &mut Frame) {
+fn render(frame: &mut Frame, app_state:&AppState) {
     Paragraph::new("Hello from application").render(frame.area(), frame.buffer_mut());
 }
