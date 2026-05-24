@@ -1,12 +1,12 @@
-use std::char;
-
-use color_eyre::{eyre::{Ok, Result}, owo_colors::colors::Green};
-use ratatui::{DefaultTerminal, Frame, crossterm::event::{self, Event}, layout::{Constraint, Layout}, style::{Color, Style, Stylize}, widgets::{Block, BorderType, List, ListItem, ListState, Paragraph, Widget}};
+use color_eyre::eyre::{Ok, Result};
+use ratatui::{DefaultTerminal, Frame, crossterm::event::{self, Event, KeyEvent}, layout::{Constraint, Layout}, style::{Color, Style, Stylize}, widgets::{Block, BorderType, List, ListItem, ListState, Padding, Paragraph, Widget}};
 
 #[derive(Debug, Default)]
 struct AppState {
     items: Vec<TodoItem>,
     list_state: ListState,
+    is_add_new: bool,
+    input_value: String,
 }
 
 #[derive(Debug, Default)]
@@ -17,6 +17,8 @@ struct TodoItem {
 
 fn main() -> Result<()> {
     let mut state = AppState::default();
+
+    state.is_add_new = false;
 
     state.items.push(TodoItem { 
         is_done: false, 
@@ -57,41 +59,76 @@ fn run(mut terminal: DefaultTerminal, app_state:&mut AppState) -> Result<()> {
 
         // Input Handling
         if let Event::Key(key) = event::read()? {
-            if key.kind != event::KeyEventKind::Press {
-                continue;
-            }
-            match key.code {
-                event::KeyCode::Esc => {
+            if app_state.is_add_new {
+                if handle_add_new(key, app_state) {
+                    app_state.is_add_new = false;
+                }
+            } else {
+                if handle_key(key, app_state) {
                     break;
                 }
-                event::KeyCode::Char(char) => match char {
-                    'D' => {
-                        if let Some(index) = app_state.list_state.selected() {
-                            app_state.items.remove(index);
-
-                            if app_state.items.is_empty() {
-                                app_state.list_state.select(None);
-                            } else if index >= app_state.items.len() {
-                                app_state
-                                    .list_state
-                                    .select(Some(app_state.items.len()) - 1);
-                            }
-                        }
-                        app_state.list_state.select_next();
-                    }
-                    'j' => {
-                        app_state.list_state.select_next();
-                    }
-                    'k' => {
-                        app_state.list_state.select_previous();
-                    }
-                    _ => {}
-                },
-                _ => {}
             }
         }
     }
     Ok(())
+}
+
+fn handle_add_new(key:KeyEvent, app_state: &mut AppState) -> bool {
+    match key.code {
+        event::KeyCode::Char(c) => {
+            app_state.input_value.push(c);
+        }
+        event::KeyCode::Backspace => {
+            app_state.input_value.pop();
+        }
+        event::KeyCode::Esc => {
+            return true;
+        }
+        event::KeyCode::Enter => {
+            return true;
+        }
+        _ => {}
+    }
+    return false;
+}
+
+fn handle_key(key:KeyEvent, app_state: &mut AppState) -> bool {
+    if key.kind != event::KeyEventKind::Press {
+        return false;
+    }
+    match key.code {
+        event::KeyCode::Esc => {
+            return true;
+        }
+        event::KeyCode::Char(char) => match char {
+            'A' => {
+                app_state.is_add_new = true;
+            }
+            'D' => {
+                if let Some(index) = app_state.list_state.selected() {
+                    app_state.items.remove(index);
+
+                    if app_state.items.is_empty() {
+                        app_state.list_state.select(None);
+                    } else if index >= app_state.items.len() {
+                        app_state
+                            .list_state
+                            .select(Some(app_state.items.len() - 1));
+                    }
+                }
+                app_state.list_state.select_next();
+            }
+            'j' => {
+                app_state.list_state.select_next();
+            }
+            'k' => {
+                app_state.list_state.select_previous();
+            }
+            _ => {}
+        },
+        _ => {}
+    }
+    return false;
 }
 
 fn render(frame: &mut Frame, app_state: &mut AppState) {
@@ -117,4 +154,15 @@ fn render(frame: &mut Frame, app_state: &mut AppState) {
     .highlight_style(Style::default().fg(Color::Green));
 
     frame.render_stateful_widget(list, inner_area, &mut app_state.list_state);
+
+    if app_state.is_add_new {
+        Paragraph::new(app_state.input_value.as_str())
+            .block(
+                Block::bordered()
+                    .fg(Color::Green)
+                    .padding(Padding::uniform(1)
+            )
+            .border_type(BorderType::Rounded))
+            .render(frame.area(), frame.buffer_mut());
+    }
 }
