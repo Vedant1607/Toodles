@@ -1,5 +1,5 @@
 use color_eyre::eyre::{Ok, Result};
-use ratatui::{DefaultTerminal, Frame, crossterm::event::{self, Event, KeyEvent}, layout::{Constraint, Layout}, style::{Color, Style, Stylize}, text::ToSpan, widgets::{Block, BorderType, List, ListItem, ListState, Padding, Paragraph, Widget}};
+use ratatui::{DefaultTerminal, Frame, crossterm::event::{self, Event, KeyEvent, KeyEventKind}, layout::{Constraint, Layout}, style::{Color, Style, Stylize}, text::ToSpan, widgets::{Block, BorderType, List, ListItem, ListState, Padding, Paragraph, Widget}};
 
 #[derive(Debug, Default)]
 struct AppState {
@@ -42,6 +42,9 @@ fn run(mut terminal: DefaultTerminal, app_state:&mut AppState) -> Result<()> {
 
         // Input Handling
         if let Event::Key(key) = event::read()? {
+            if key.kind != KeyEventKind::Press {
+                continue;
+            }
             if app_state.is_add_new {
                 match handle_add_new(key, app_state){
                     FormAction::None => {},
@@ -91,6 +94,13 @@ fn handle_key(key:KeyEvent, app_state: &mut AppState) -> bool {
         return false;
     }
     match key.code {
+        event::KeyCode::Enter => {
+            if let Some(index) = app_state.list_state.selected() {
+                if let Some(item) = app_state.items.get_mut(index) {
+                    item.is_done = !item.is_done;
+                }
+            }
+        }
         event::KeyCode::Esc => {
             return true;
         }
@@ -112,14 +122,14 @@ fn handle_key(key:KeyEvent, app_state: &mut AppState) -> bool {
                 }
                 app_state.list_state.select_next();
             }
-            'j' => {
-                app_state.list_state.select_next();
-            }
-            'k' => {
-                app_state.list_state.select_previous();
-            }
             _ => {}
         },
+        event::KeyCode::Up => {
+            app_state.list_state.select_previous();
+        }
+        event::KeyCode::Down => {
+            app_state.list_state.select_next();
+        }
         _ => {}
     }
     return false;
@@ -131,34 +141,57 @@ fn render(frame: &mut Frame, app_state: &mut AppState) {
         .areas(frame.area());
 
     if app_state.is_add_new {
-        Paragraph::new(app_state.input_value.as_str())
-            .block(
-                Block::bordered()
-                    .title("Input Description".to_span().into_centered_line())
-                    .fg(Color::Green)
-                    .padding(Padding::uniform(1)
-            )
-            .border_type(BorderType::Rounded))
-            .render(border_area, frame.buffer_mut());
+        render_input_form(app_state, border_area, frame);
     } else {
-        let [inner_area] = Layout::vertical([Constraint::Fill(1)])
+        render_list(border_area, frame, app_state);
+}
+
+fn render_input_form(
+    app_state: &mut AppState,
+    border_area: ratatui::prelude::Rect,
+    frame: &mut Frame<'_>
+) {
+    Paragraph::new(app_state.input_value.as_str())
+    .block(
+        Block::bordered()
+            .title("Input Description".to_span().into_centered_line())
+            .fg(Color::Green)
+            .padding(Padding::uniform(1)
+    )
+    .border_type(BorderType::Rounded))
+    .render(border_area, frame.buffer_mut());
+}
+
+fn render_list(
+    border_area: ratatui::prelude::Rect,
+    frame: &mut Frame,
+    app_state: &mut AppState,
+) {
+            let [inner_area] = Layout::vertical([Constraint::Fill(1)])
                 .margin(1)
                 .areas(border_area);
 
         Block::bordered()
             .border_type(BorderType::Rounded)
+            .title("Toodles".to_span().into_centered_line())
             .fg(Color::Yellow)
             .render(border_area, frame.buffer_mut());
 
         let list = List::new(app_state
             .items
             .iter()
-            .map(|x| ListItem::from(x.description.as_str()))
+            .map(|x| {
+                let value = if x.is_done {
+                    x.description.to_span().crossed_out()
+                } else {
+                    x.description.to_span()
+                };
+                ListItem::from(value)
+            })
         )
         .highlight_symbol(">")
         .highlight_style(Style::default().fg(Color::Green));
 
         frame.render_stateful_widget(list, inner_area, &mut app_state.list_state);
     }
-    
 }
