@@ -15,6 +15,12 @@ struct TodoItem {
     description: String,
 }
 
+enum FormAction {
+    None,
+    Submit,
+    Escape,
+}
+
 fn main() -> Result<()> {
     let mut state = AppState::default();
 
@@ -60,8 +66,19 @@ fn run(mut terminal: DefaultTerminal, app_state:&mut AppState) -> Result<()> {
         // Input Handling
         if let Event::Key(key) = event::read()? {
             if app_state.is_add_new {
-                if handle_add_new(key, app_state) {
-                    app_state.is_add_new = false;
+                match handle_add_new(key, app_state){
+                    FormAction::None => {},
+                    FormAction::Submit => {
+                        app_state.is_add_new = false;
+                        app_state.items.push(TodoItem {
+                            is_done: false, description: app_state.input_value.clone() 
+                        });
+                        app_state.input_value.clear();
+                    },
+                    FormAction::Escape => {
+                        app_state.is_add_new = false;
+                        app_state.input_value.clear();
+                    },
                 }
             } else {
                 if handle_key(key, app_state) {
@@ -73,7 +90,7 @@ fn run(mut terminal: DefaultTerminal, app_state:&mut AppState) -> Result<()> {
     Ok(())
 }
 
-fn handle_add_new(key:KeyEvent, app_state: &mut AppState) -> bool {
+fn handle_add_new(key:KeyEvent, app_state: &mut AppState) -> FormAction {
     match key.code {
         event::KeyCode::Char(c) => {
             app_state.input_value.push(c);
@@ -82,14 +99,14 @@ fn handle_add_new(key:KeyEvent, app_state: &mut AppState) -> bool {
             app_state.input_value.pop();
         }
         event::KeyCode::Esc => {
-            return true;
+            return  FormAction::Escape;
         }
         event::KeyCode::Enter => {
-            return true;
+            return  FormAction::Submit;
         }
         _ => {}
     }
-    return false;
+    return FormAction::None;
 }
 
 fn handle_key(key:KeyEvent, app_state: &mut AppState) -> bool {
@@ -165,4 +182,5 @@ fn render(frame: &mut Frame, app_state: &mut AppState) {
             .border_type(BorderType::Rounded))
             .render(frame.area(), frame.buffer_mut());
     }
+    
 }
